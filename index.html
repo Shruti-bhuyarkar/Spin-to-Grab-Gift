@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Spin To Grab The Gifts</title>
+<title>Lucky Spin — 1 to 29</title>
 <style>
 :root{--pink:#ff4fa3;--purple:#8b5cf6;--gold:#ffd166;--cyan:#45d7ff}
 *{box-sizing:border-box}
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
 html,body{height:100%;margin:0}
 body{
   font-family:Poppins,"Segoe UI",system-ui,sans-serif;overflow:hidden;color:#4b385b;
@@ -60,7 +62,7 @@ button.action:hover{background:#fff}
 button.action:disabled{opacity:.55;cursor:not-allowed}
 button.spinBtn{background:linear-gradient(135deg,#ff72b5,#9b6cff);color:#fff;border:0;min-width:120px;font-size:15px}
 button.spinBtn:hover{background:linear-gradient(135deg,#ff5fac,#8c58ff)}
-#soundBtn{position:fixed;right:15px;top:15px;z-index:8}
+#soundBtn{position:fixed;right:15px;top:calc(15px + env(safe-area-inset-top,0px));z-index:8}
 #fx{position:fixed;inset:0;pointer-events:none;z-index:9}
 @media(max-height:650px){.wheelWrap{--size:min(56vh,330px)}.resultWrap{height:100px;margin-top:18px}}
 </style>
@@ -126,7 +128,7 @@ button.spinBtn:hover{background:linear-gradient(135deg,#ff5fac,#8c58ff)}
   /* ---------- Audio (Web Audio API, created on first user gesture) ---------- */
   let audio = null, master = null;
   function initAudio() {
-    if (!audio) {
+    try { if (!audio) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       audio = new AC();
@@ -134,7 +136,7 @@ button.spinBtn:hover{background:linear-gradient(135deg,#ff5fac,#8c58ff)}
       master.gain.value = 0.6;
       master.connect(audio.destination);
     }
-    if (audio.state === 'suspended') audio.resume();
+    if (audio && audio.state === 'suspended') audio.resume(); } catch (e) { audio = null; }
   }
   function tone(freq, dur, type = 'sine', vol = 0.2, delay = 0) {
     if (!audio || !soundOn) return;
@@ -149,11 +151,11 @@ button.spinBtn:hover{background:linear-gradient(135deg,#ff5fac,#8c58ff)}
   const tickSound = () => { tone(900, 0.04, 'square', 0.08); tone(450, 0.05, 'triangle', 0.12); };
   const winSound = () => [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i === 3 ? 0.4 : 0.18, 'sine', 0.25, i * 0.11));
 
-  soundBtn.addEventListener('click', () => {
+  soundBtn?.addEventListener('click', () => {
     initAudio();
     soundOn = !soundOn;
-    soundBtn.textContent = soundOn ? '🔊 Sound on' : '🔇 Sound off';
-    soundBtn.setAttribute('aria-pressed', soundOn);
+    if (soundBtn) soundBtn.textContent = soundOn ? '🔊 Sound on' : '🔇 Sound off';
+    soundBtn?.setAttribute('aria-pressed', soundOn);
     if (soundOn) tone(660, 0.1, 'sine', 0.2);
   });
 
@@ -194,8 +196,8 @@ button.spinBtn:hover{background:linear-gradient(135deg,#ff5fac,#8c58ff)}
 
   function setBusy(b) {
     spinning = b;
-    spinBtn.disabled = b; resetBtn.disabled = b;
-    hub.classList.toggle('idle', !b); hub.classList.toggle('busy', b);
+    if (spinBtn) spinBtn.disabled = b; if (resetBtn) resetBtn.disabled = b;
+    hub?.classList.toggle('idle', !b); hub?.classList.toggle('busy', b);
   }
 
   // Current wheel angle, read live from the computed transform (for tick sounds)
@@ -232,11 +234,13 @@ button.spinBtn:hover{background:linear-gradient(135deg,#ff5fac,#8c58ff)}
     let last = segmentUnderPointer(currentAngle());
     let raf;
     const watch = () => {
+      try {
       const s = segmentUnderPointer(currentAngle());
       if (s !== last) {
         last = s; tickSound();
         pointer.classList.add('tick'); setTimeout(() => pointer.classList.remove('tick'), 60);
       }
+      } catch (e) {}
       raf = requestAnimationFrame(watch);
     };
     raf = requestAnimationFrame(watch);
@@ -254,10 +258,10 @@ button.spinBtn:hover{background:linear-gradient(135deg,#ff5fac,#8c58ff)}
     }, duration + 60);
   }
 
-  spinBtn.addEventListener('click', spin);
-  hub.addEventListener('click', spin);
+  spinBtn?.addEventListener('click', spin);
+  hub?.addEventListener('click', spin);
   wheel.addEventListener('click', spin);
-  resetBtn.addEventListener('click', () => {
+  resetBtn?.addEventListener('click', () => {
     if (spinning) return;
     newRound();
     result.classList.remove('show'); result.textContent = '?';
