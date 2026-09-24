@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lucky Spin — 1 to 29</title>
+<style>
+:root{--pink:#ff4fa3;--purple:#8b5cf6;--gold:#ffd166;--cyan:#45d7ff}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font-family:Poppins,"Segoe UI",system-ui,sans-serif;overflow:hidden;color:#4b385b;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;
+  background:
+    radial-gradient(circle at 12% 18%,rgba(255,190,215,.7),transparent 32%),
+    radial-gradient(circle at 88% 18%,rgba(190,225,255,.72),transparent 32%),
+    radial-gradient(circle at 80% 85%,rgba(215,195,255,.68),transparent 34%),
+    radial-gradient(circle at 18% 82%,rgba(205,245,225,.62),transparent 32%),
+    linear-gradient(135deg,#fff5f8,#f7f1ff 48%,#effaff);
+}
+.topbar{text-align:center;z-index:2}
+h1{font-size:clamp(24px,5vw,38px);margin:0;font-weight:900}
+.subtitle{margin:5px 0 22px;color:#7b6688;font-size:13px}
+.game{display:flex;flex-direction:column;align-items:center;position:relative;z-index:2}
+.wheelWrap{--size:min(78vw,390px);position:relative;width:var(--size);height:var(--size)}
+.ring{position:absolute;inset:-10px;border-radius:50%;
+  background:conic-gradient(var(--gold),var(--pink),var(--cyan),var(--purple),var(--gold));
+  box-shadow:0 0 25px #ff4fa366,0 0 60px #8b5cf633}
+.pointer{position:absolute;top:-16px;left:50%;margin-left:-18px;width:36px;text-align:center;z-index:7;
+  font-size:34px;line-height:1;filter:drop-shadow(0 4px 3px #0006);transform-origin:50% 30%;transition:transform .08s}
+.pointer.tick{transform:rotate(-14deg)}
+.wheel{position:absolute;inset:0;border-radius:50%;overflow:hidden;cursor:pointer;user-select:none;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  box-shadow:inset 0 0 0 5px #ffffff55,inset 0 0 35px #0008,0 22px 45px #0006}
+.label{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px;display:flex;
+  align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#fff;
+  text-shadow:0 2px 3px #0009;pointer-events:none;
+  transform:rotate(var(--a)) translateY(calc(var(--size) * -.39)) rotate(calc(-1 * var(--a)))}
+.hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:26%;height:26%;border-radius:50%;
+  z-index:5;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;
+  background:radial-gradient(circle,#fff,#ffeef8 65%,#ffd1e8);color:#8d2761;
+  font-size:clamp(10px,2.4vw,14px);font-weight:900;letter-spacing:1px;
+  border:5px solid #ffffffaa;box-shadow:0 5px 18px #0006,inset 0 0 15px #ff6ca855;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.hub.idle span{animation:pulse 1.4s infinite}
+.hub.busy{cursor:default}
+@keyframes pulse{50%{transform:scale(1.08)}}
+.resultWrap{height:130px;margin-top:26px;text-align:center}
+.resultNumber{font-size:clamp(52px,12vw,82px);font-weight:900;line-height:.95;opacity:0;transform:scale(.3) rotate(-15deg);
+  background:linear-gradient(90deg,#ffb020,#ff65ae,#6fe7ff,#ffb020);background-size:250%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 2s linear infinite}
+.resultNumber.show{opacity:1;transform:none;transition:all .55s cubic-bezier(.2,1.6,.3,1)}
+@keyframes shine{to{background-position:250%}}
+.hint{margin-top:6px;color:#7b6688;font-size:13px}
+.progress{margin-top:4px;color:#8d789c;font-size:12px}
+.controls{display:flex;gap:8px;margin-top:10px;justify-content:center}
+button.action{border:1px solid rgba(139,92,150,.18);border-radius:999px;padding:9px 17px;font:inherit;font-size:13px;
+  font-weight:800;cursor:pointer;color:#6b4a80;background:rgba(255,255,255,.65);box-shadow:0 6px 18px rgba(90,60,100,.1)}
+button.action:hover{background:#fff}
+button.action:disabled{opacity:.55;cursor:not-allowed}
+button.spinBtn{background:linear-gradient(135deg,#ff72b5,#9b6cff);color:#fff;border:0;min-width:120px;font-size:15px}
+button.spinBtn:hover{background:linear-gradient(135deg,#ff5fac,#8c58ff)}
+#soundBtn{position:fixed;right:15px;top:15px;z-index:8}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+@media(max-height:650px){.wheelWrap{--size:min(56vh,330px)}.resultWrap{height:100px;margin-top:18px}}
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<button class="action" id="soundBtn" aria-pressed="true">🔊 Sound on</button>
+
+<div class="topbar">
+  <h1>✨ Lucky Spin ✨</h1>
+  <div class="subtitle">29 numbers • no repeats • let fate choose 🎁</div>
+</div>
+
+<div class="game">
+  <div class="wheelWrap" id="wheelWrap">
+    <div class="ring"></div>
+    <div class="pointer" id="pointer">🔻</div>
+    <div class="wheel" id="wheel"></div>
+    <div class="hub idle" id="hub"><span>TAP<br>TO SPIN</span></div>
+  </div>
+
+  <div class="resultWrap">
+    <div class="resultNumber" id="resultNumber" aria-live="polite">?</div>
+    <div class="hint" id="hint">Spin the wheel to reveal a number</div>
+    <div class="progress" id="progress">0 / 29 revealed</div>
+    <div class="controls">
+      <button class="action" id="resetBtn">↻ New Round</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const TOTAL = 29, SEG = 360 / TOTAL, SPIN_MS = 5200;
+  const $ = id => document.getElementById(id);
+  const wheel = $('wheel'), hub = $('hub'), pointer = $('pointer'), result = $('resultNumber'),
+        hint = $('hint'), progress = $('progress'), spinBtn = $('spinBtn'), resetBtn = $('resetBtn'),
+        soundBtn = $('soundBtn'), canvas = $('fx'), ctx = canvas.getContext('2d');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let remaining = [], used = 0, rotation = 0, spinning = false, soundOn = true;
+
+  /* ---------- Wheel construction ---------- */
+  const COLORS = ['#ff4f91','#ff9f43','#ffb703','#3fd48f','#45c7f0','#5f8cff','#9b6cff','#d45cff'];
+  const segColor = i => COLORS[i % COLORS.length];
+  const stops = [];
+  for (let i = 0; i < TOTAL; i++) {
+    // last segment uses a different colour if it would match the first one
+    const c = (i === TOTAL - 1 && i % COLORS.length === 0) ? '#ffd166' : segColor(i);
+    stops.push(`${c} ${(i * SEG).toFixed(3)}deg ${((i + 1) * SEG).toFixed(3)}deg`);
+  }
+  wheel.style.background = `conic-gradient(${stops.join(',')})`;
+  for (let i = 1; i <= TOTAL; i++) {
+    const el = document.createElement('div');
+    el.className = 'label';
+    el.textContent = i;
+    el.style.setProperty('--a', ((i - 1) * SEG + SEG / 2) + 'deg');
+    wheel.appendChild(el);
+  }
+
+  /* ---------- Audio (Web Audio API, created on first user gesture) ---------- */
+  let audio = null, master = null;
+  function initAudio() {
+    if (!audio) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      audio = new AC();
+      master = audio.createGain();
+      master.gain.value = 0.6;
+      master.connect(audio.destination);
+    }
+    if (audio.state === 'suspended') audio.resume();
+  }
+  function tone(freq, dur, type = 'sine', vol = 0.2, delay = 0) {
+    if (!audio || !soundOn) return;
+    const t = audio.currentTime + delay, o = audio.createOscillator(), g = audio.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + dur + 0.03);
+  }
+  const tickSound = () => { tone(900, 0.04, 'square', 0.08); tone(450, 0.05, 'triangle', 0.12); };
+  const winSound = () => [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i === 3 ? 0.4 : 0.18, 'sine', 0.25, i * 0.11));
+
+  soundBtn.addEventListener('click', () => {
+    initAudio();
+    soundOn = !soundOn;
+    soundBtn.textContent = soundOn ? '🔊 Sound on' : '🔇 Sound off';
+    soundBtn.setAttribute('aria-pressed', soundOn);
+    if (soundOn) tone(660, 0.1, 'sine', 0.2);
+  });
+
+  /* ---------- Confetti ---------- */
+  let particles = [];
+  const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight; };
+  resize(); addEventListener('resize', resize);
+  function burst(x, y, n = 140) {
+    const cols = ['#ff4fa3', '#ffd166', '#45d7ff', '#8b5cf6', '#69e6a5'];
+    for (let i = 0; i < n; i++) particles.push({
+      x, y, vx: (Math.random() - .5) * 12, vy: -Math.random() * 11 - 2, s: 3 + Math.random() * 6,
+      life: 0, max: 50 + Math.random() * 45, rot: Math.random() * 6.28, vr: (Math.random() - .5) * .3,
+      c: cols[i % cols.length]
+    });
+  }
+  (function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles = particles.filter(p => p.life < p.max);
+    for (const p of particles) {
+      p.life++; p.x += p.vx; p.y += p.vy; p.vy += .23; p.rot += p.vr;
+      ctx.save(); ctx.globalAlpha = 1 - p.life / p.max; ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 1.8); ctx.restore();
+    }
+    requestAnimationFrame(loop);
+  })();
+
+  /* ---------- Game logic ---------- */
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  function newRound() {
+    remaining = shuffle(Array.from({ length: TOTAL }, (_, i) => i + 1));
+    used = 0;
+    progress.textContent = `0 / ${TOTAL} revealed`;
+  }
+  newRound();
+
+  function setBusy(b) {
+    spinning = b;
+    spinBtn.disabled = b; resetBtn.disabled = b;
+    hub.classList.toggle('idle', !b); hub.classList.toggle('busy', b);
+  }
+
+  // Current wheel angle, read live from the computed transform (for tick sounds)
+  function currentAngle() {
+    const m = getComputedStyle(wheel).transform;
+    if (!m || m === 'none') return 0;
+    const v = m.match(/matrix\(([^)]+)\)/)[1].split(',').map(parseFloat);
+    return (Math.atan2(v[1], v[0]) * 180 / Math.PI + 360) % 360;
+  }
+  const segmentUnderPointer = a => Math.floor(((360 - a) % 360) / SEG);
+
+  function spin() {
+    if (spinning) return;
+    initAudio();
+    if (!remaining.length) newRound();
+
+    const number = remaining.pop();          // list is already shuffled
+    used++;
+    setBusy(true);
+    result.classList.remove('show'); result.textContent = '?';
+    hint.textContent = '🎡 Spinning...';
+
+    // Land exactly on the chosen number: its centre must end up under the pointer (top).
+    const centre = (number - 1) * SEG + SEG / 2;
+    const jitter = (Math.random() - .5) * (SEG * 0.7);
+    const targetMod = (((360 - centre + jitter) % 360) + 360) % 360;
+    const delta = (((targetMod - rotation) % 360) + 360) % 360;
+    rotation += (6 + Math.floor(Math.random() * 3)) * 360 + delta;
+
+    const duration = reduceMotion ? 600 : SPIN_MS;
+    wheel.style.transition = `transform ${duration}ms cubic-bezier(.12,.7,.1,1)`;
+    wheel.style.transform = `rotate(${rotation}deg)`;
+
+    let last = segmentUnderPointer(currentAngle());
+    let raf;
+    const watch = () => {
+      const s = segmentUnderPointer(currentAngle());
+      if (s !== last) {
+        last = s; tickSound();
+        pointer.classList.add('tick'); setTimeout(() => pointer.classList.remove('tick'), 60);
+      }
+      raf = requestAnimationFrame(watch);
+    };
+    raf = requestAnimationFrame(watch);
+
+    setTimeout(() => {
+      cancelAnimationFrame(raf);
+      result.textContent = number;
+      result.classList.add('show');
+      hint.textContent = `🎉 You got ${number}!`;
+      progress.textContent = `${used} / ${TOTAL} revealed`;
+      const r = wheel.getBoundingClientRect();
+      burst(r.left + r.width / 2, r.top + r.height / 2);
+      winSound();
+      setBusy(false);
+    }, duration + 60);
+  }
+
+  spinBtn.addEventListener('click', spin);
+  hub.addEventListener('click', spin);
+  wheel.addEventListener('click', spin);
+  resetBtn.addEventListener('click', () => {
+    if (spinning) return;
+    newRound();
+    result.classList.remove('show'); result.textContent = '?';
+    hint.textContent = 'Fresh round! Spin the wheel 🎡';
+  });
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      if (e.target.tagName === 'BUTTON') return;   // let focused buttons behave normally
+      e.preventDefault(); spin();
+    }
+  });
+})();
+</script>
+</body>
+</html>
